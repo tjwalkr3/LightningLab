@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="None">
+        
+        
+        <link rel="shortcut icon" href="img/favicon.ico">
+        <title>Thomas Lightning Lab 03/17/25</title>
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link href="css/fontawesome.min.css" rel="stylesheet">
+        <link href="css/brands.min.css" rel="stylesheet">
+        <link href="css/solid.min.css" rel="stylesheet">
+        <link href="css/v4-font-face.min.css" rel="stylesheet">
+        <link href="css/base.css" rel="stylesheet">
+        <link id="hljs-light" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" >
+        <link id="hljs-dark" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css" disabled>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body class="homepage">
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href=".">Thomas Lightning Lab 03/17/25</a>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav ms-md-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-bs-toggle="modal" data-bs-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-bs-toggle="collapse" data-bs-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-body-tertiary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-bs-level="2"><a href="#using-the-search-bar-in-net-maui-with-an-external-api" class="nav-link">Using the Search Bar in .NET MAUI with an External API</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h2 id="using-the-search-bar-in-net-maui-with-an-external-api">Using the Search Bar in .NET MAUI with an External API</h2>
+<p>In this demo, we're going to learn how to use a search bar in a .NET MAUI app to make searches in an API.
+First, make a new .NET MAUI project.  Create a folder for Views and ViewModels.  Move the MainPage view into the views folder and create a corresponding ViewModel for it.  Add the appropriate route to AppShell.json and set the MainPageViewModel as the binding context for MainPage.
+First, we are going to add a DTO class to our app. For convenience of this demo, I will add it under the ViewModel. </p>
+<pre><code class="language-csharp">public class StreamModel
+{
+    [JsonPropertyName(&quot;name&quot;)]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName(&quot;url_resolved&quot;)]
+    public string Url { get; set; } = string.Empty;
+}
+</code></pre>
+<p>Next, we will open the ViewModel and add an ObservableCollection of StreamModels and a string to hold the search query.</p>
+<pre><code class="language-csharp">public partial class StreamPageViewModel : ObservableObject
+{
+    [ObservableProperty]
+    private string _searchQuery = string.Empty;
+
+    public ObservableCollection&lt;StreamModel&gt; AllStreamsList { get; } = [];
+}
+</code></pre>
+<p>Now, we will add a method to the ViewModel that will get the items that we want to render. In this case, we will be getting them from the Radio Browser API. </p>
+<pre><code class="language-csharp">private static async Task&lt;List&lt;StreamModel&gt;&gt; Search(string query)
+{
+    List&lt;StreamModel&gt; streams = [];
+    HttpClient _httpClient = new()
+    {
+        BaseAddress = new Uri(&quot;https://at1.api.radio-browser.info&quot;)
+    };
+
+    using HttpResponseMessage response = await _httpClient.GetAsync($&quot;/json/stations/byname/{query}?order=clickcount&amp;limit=10&quot;);
+    if (response.IsSuccessStatusCode)
+    {
+        var result = response.Content.ReadAsStringAsync().Result;
+        streams = JsonSerializer.Deserialize&lt;List&lt;StreamModel&gt;&gt;(result) ?? [];
+    }
+
+    return streams;
+}
+</code></pre>
+<p>Now that we can get servers from the API, let's add a RelayCommand that can add the StreamModels to the ObservableCollection.</p>
+<pre><code class="language-csharp">[RelayCommand]
+private async Task SearchStreams()
+{
+    AllStreamsList.Clear();
+
+    List&lt;StreamModel&gt; searchResults = string.IsNullOrWhiteSpace(SearchQuery)
+        ? []
+        : await _musicStreamService.Search(SearchQuery);
+
+    foreach (var stream in searchResults)
+    {
+        AllStreamsList.Add(stream);
+    }
+}
+</code></pre>
+<p>After this, go to MainPage.xaml and delete everything inside the VerticalStackLayout. 
+Add a SearchBar to MainPage.xaml.  This search bar's text field is bound to the SearchQuery observable property and the SearchStreamsCommand that we created eaarlier. </p>
+<pre><code class="language-xml">&lt;SearchBar Placeholder=&quot;Search streams...&quot;
+           Text=&quot;{Binding SearchQuery, Mode=TwoWay}&quot;
+           SearchCommand=&quot;{Binding SearchStreamsCommand}&quot;
+           FontSize=&quot;18&quot;
+           Margin=&quot;0,10&quot; /&gt;
+</code></pre>
+<p>Lastly, we need to add a CollectionView to display our servers</p>
+<pre><code class="language-xml">&lt;CollectionView ItemsSource=&quot;{Binding AllStreamsList}&quot;&gt;
+    &lt;CollectionView.ItemTemplate&gt;
+        &lt;DataTemplate&gt;
+            &lt;VerticalStackLayout&gt;
+                &lt;Label Text=&quot;{Binding Name}&quot;
+                       FontAttributes=&quot;Bold&quot;
+                       FontSize=&quot;18&quot;
+                       Margin=&quot;0,0,0,8&quot; /&gt;
+                &lt;Label Text=&quot;{Binding Url}&quot;
+                       FontSize=&quot;14&quot;
+                       Margin=&quot;10,0,0,8&quot; /&gt;
+            &lt;/VerticalStackLayout&gt;
+        &lt;/DataTemplate&gt;
+    &lt;/CollectionView.ItemTemplate&gt;
+&lt;/CollectionView&gt;
+</code></pre>
+<p>You should now be able to run the app and search for internet radio stations using the search bar. </p></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+            var base_url = ".",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="js/base.js"></script>
+        <script src="search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2025-03-16 07:52:08.159004+00:00
+-->
