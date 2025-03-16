@@ -76,7 +76,7 @@ First, we are going to add a DTO class to our app. For convenience of this demo,
 }
 </code></pre>
 <p>Next, we will open the ViewModel and add an ObservableCollection of StreamModels and a string to hold the search query.</p>
-<pre><code class="language-csharp">public partial class StreamPageViewModel : ObservableObject
+<pre><code class="language-csharp">public partial class MainPageViewModel : ObservableObject
 {
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -111,7 +111,7 @@ private async Task SearchStreams()
 
     List&lt;StreamModel&gt; searchResults = string.IsNullOrWhiteSpace(SearchQuery)
         ? []
-        : await _musicStreamService.Search(SearchQuery);
+        : await Search(SearchQuery);
 
     foreach (var stream in searchResults)
     {
@@ -226,5 +226,5 @@ Add a SearchBar to MainPage.xaml.  This search bar's text field is bound to the 
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-03-16 07:52:08.159004+00:00
+Build Date UTC : 2025-03-16 08:10:45.368487+00:00
 -->
